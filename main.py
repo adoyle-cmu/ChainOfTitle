@@ -2,17 +2,17 @@ import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox, filedialog
 from fractions import Fraction
 import json
+import os
 
-class HeirloomApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Heirloom Head Right Calculator")
-        self.root.geometry("800x600")
-
-        self.instructions_label = tk.Label(self.root, text="1. Click 'Add Original Owner' to add a trunk to the tree.\n2. Select a person in the tree and click 'Add Heir' to add a successor.\n3. Click 'Generate Report' to see the final claimants and their shares.", justify=tk.LEFT)
+class HeirloomTreeTab(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.pack(expand=True, fill="both")
+        
+        self.instructions_label = tk.Label(self, text="1. Click 'Add Original Owner' to add a trunk to the tree.\n2. Select a person in the tree and click 'Add Heir' to add a successor.\n3. Click 'Generate Report' to see the final claimants and their shares.", justify=tk.LEFT)
         self.instructions_label.pack(anchor="w", padx=10, pady=5)
 
-        self.tree = ttk.Treeview(self.root, columns=("Name", "Share"), show="tree headings")
+        self.tree = ttk.Treeview(self, columns=("Name", "Share"), show="tree headings")
         self.tree.heading("#0", text="Heirloom Tree")
         self.tree.heading("Name", text="Name")
         self.tree.heading("Share", text="Share")
@@ -21,10 +21,10 @@ class HeirloomApp:
         self.shares = {}
         self.allocated_shares = {}
 
-        self.total_shares_label = tk.Label(self.root, text="", anchor="e", padx=10)
+        self.total_shares_label = tk.Label(self, text="", anchor="e", padx=10)
         self.total_shares_label.pack(side="bottom", fill="x")
 
-        self.button_frame = tk.Frame(self.root)
+        self.button_frame = tk.Frame(self)
         self.button_frame.pack(fill="x", pady=10)
 
         self.add_owner_button = tk.Button(self.button_frame, text="Add Original Owner", command=self.add_original_owner)
@@ -48,7 +48,7 @@ class HeirloomApp:
         self.clear_all_button = tk.Button(self.button_frame, text="Clear All", command=self.clear_all)
         self.clear_all_button.pack(side="right", padx=10)
 
-        self.context_menu = tk.Menu(self.root, tearoff=0)
+        self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Edit", command=self.edit_selected)
         self.context_menu.add_command(label="Delete", command=self.delete_selected)
         self.context_menu.add_separator()
@@ -72,6 +72,7 @@ class HeirloomApp:
         if messagebox.askokcancel("Clear All", "Are you sure you want to clear the entire tree?"):
             self.tree.delete(*self.tree.get_children())
             self.shares.clear()
+            self.allocated_shares.clear()
             self.update_total_shares()
 
     def update_total_shares(self):
@@ -118,6 +119,13 @@ class HeirloomApp:
             with open(filename, 'w') as f:
                 json.dump(data, f, indent=4)
             messagebox.showinfo("Success", "Tree saved successfully.")
+            
+            try:
+                notebook = self.master.master
+                notebook.tab(self.master, text=os.path.splitext(os.path.basename(filename))[0])
+            except Exception:
+                pass
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save tree: {e}")
 
@@ -144,17 +152,21 @@ class HeirloomApp:
                 share = Fraction(node["share"])
                 allocated_share = Fraction(node["allocated_share"])
 
-                # If parent is empty string, it's root level
                 if parent_id == "":
                      parent_id = ""
 
-                # Insert with same ID
                 self.tree.insert(parent_id, "end", iid=item_id, text=name, values=(name, str(share)))
                 self.shares[item_id] = share
                 self.allocated_shares[item_id] = allocated_share
 
             self.update_total_shares()
             messagebox.showinfo("Success", "Tree loaded successfully.")
+
+            try:
+                notebook = self.master.master
+                notebook.tab(self.master, text=os.path.splitext(os.path.basename(filename))[0])
+            except Exception:
+                pass
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load tree: {e}")
@@ -163,8 +175,8 @@ class HeirloomApp:
         num_original_owners = len(self.tree.get_children())
         default_share = Fraction(1, num_original_owners + 1)
         
-        dialog = AddOriginalOwnerDialog(self.root, default_share)
-        self.root.wait_window(dialog.top)
+        dialog = AddOriginalOwnerDialog(self, default_share)
+        self.wait_window(dialog.top)
 
         if dialog.name and dialog.share_fraction is not None:
             item_id = self.tree.insert("", "end", text=dialog.name, values=(dialog.name, str(dialog.share_fraction)))
@@ -190,17 +202,15 @@ class HeirloomApp:
         all_nodes = self._get_all_nodes()
         nodes = [node for node in all_nodes if node[1] != source_id] # Exclude source from destinations
 
-        dialog = ConveyShareDialog(self.root, nodes, source_remainder)
-        self.root.wait_window(dialog.top)
+        dialog = ConveyShareDialog(self, nodes, source_remainder)
+        self.wait_window(dialog.top)
 
         if dialog.conveyances:
             total_conveyed_share = sum(share for _, share in dialog.conveyances)
 
-            # Update source
             self.shares[source_id] -= total_conveyed_share
             self.tree.item(source_id, values=(self.tree.item(source_id, 'text'), str(self.shares[source_id])))
 
-            # Update destinations
             for dest_id, share_to_convey in dialog.conveyances:
                 old_dest_share = self.shares[dest_id]
                 new_dest_share = old_dest_share + share_to_convey
@@ -219,8 +229,8 @@ class HeirloomApp:
             return
 
         selected_item = selected_item[0]
-        dialog = AddHeirDialog(self.root)
-        self.root.wait_window(dialog.top)
+        dialog = AddHeirDialog(self)
+        self.wait_window(dialog.top)
         
         if dialog.name and dialog.share_fraction:
             parent_share = self.shares[selected_item]
@@ -252,8 +262,8 @@ class HeirloomApp:
             else:
                 original_relative_share = old_share / parent_share
             
-            dialog = EditDialog(self.root, original_name, original_relative_share)
-            self.root.wait_window(dialog.top)
+            dialog = EditDialog(self, original_name, original_relative_share)
+            self.wait_window(dialog.top)
 
             if dialog.name and dialog.share_fraction is not None:
                 new_share = parent_share * dialog.share_fraction
@@ -272,8 +282,8 @@ class HeirloomApp:
                 self.update_total_shares()
 
         else: # Original Owner
-            dialog = EditDialog(self.root, original_name, old_share)
-            self.root.wait_window(dialog.top)
+            dialog = EditDialog(self, original_name, old_share)
+            self.wait_window(dialog.top)
 
             if dialog.name and dialog.share_fraction is not None:
                 new_share = dialog.share_fraction
@@ -375,7 +385,7 @@ class HeirloomApp:
         new_share = Fraction(1, len(original_owners))
 
         for owner_id in original_owners:
-            old_share = self.shares.get(owner_id, new_share) # Use new_share as default for new owners
+            old_share = self.shares.get(owner_id, new_share)
             self.shares[owner_id] = new_share
             self.allocated_shares[owner_id] = new_share
             self.tree.item(owner_id, values=(self.tree.item(owner_id, 'text'), str(new_share)))
@@ -396,7 +406,7 @@ class HeirloomApp:
             return
 
         total_share = sum(share for name, share in claimants)
-        ReportWindow(self.root, claimants, total_share)
+        ReportWindow(self, claimants, total_share)
 
 class AddHeirDialog:
     def __init__(self, parent):
@@ -645,6 +655,47 @@ class ReportWindow:
             
         self.text.insert("1.0", report_str)
         self.text.config(state="disabled")
+
+class HeirloomApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Heirloom Head Right Calculator")
+        self.root.geometry("800x600")
+
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(expand=True, fill="both")
+        self.notebook.bind("<Button-3>", self.show_tab_menu)
+
+        self.tab_menu = tk.Menu(self.root, tearoff=0)
+        self.tab_menu.add_command(label="Close Tab", command=self.close_tab)
+
+        self.menu_bar = tk.Menu(self.root)
+        self.root.config(menu=self.menu_bar)
+        
+        self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label="New Tab", command=self.add_tab)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.root.quit)
+
+        self.add_tab()
+
+    def show_tab_menu(self, event):
+        try:
+            self.clicked_tab_index = self.notebook.index(f"@{event.x},{event.y}")
+            self.tab_menu.post(event.x_root, event.y_root)
+        except tk.TclError:
+            pass
+
+    def close_tab(self):
+        if hasattr(self, 'clicked_tab_index'):
+             self.notebook.forget(self.clicked_tab_index)
+
+    def add_tab(self):
+        tab_frame = tk.Frame(self.notebook)
+        self.notebook.add(tab_frame, text=f"Tree {len(self.notebook.tabs()) + 1}")
+        tree_app = HeirloomTreeTab(tab_frame)
+        self.notebook.select(tab_frame)
 
 if __name__ == "__main__":
     root = tk.Tk()
