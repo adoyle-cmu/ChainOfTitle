@@ -647,11 +647,11 @@ class ReportWindow:
         report_str = "Claimants Report:\n\n"
         for name, share in data:
             percentage = float(share) * 100
-            report_str += f"{name}: {share} ({percentage:.4f}%)\n" if share != 0 else ''
+            report_str += f"{name}: {share} ({percentage:.8f}%)\n" if share != 0 else ''
         
         report_str += "\n"
         total_percentage = float(total_share) * 100
-        report_str += f"Total Shares: {total_share} ({total_percentage:.4f}%)\n"
+        report_str += f"Total Shares: {total_share} ({total_percentage:.8f}%)\n"
             
         self.text.insert("1.0", report_str)
         self.text.config(state="disabled")
