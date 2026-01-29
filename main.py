@@ -45,8 +45,12 @@ class HeirloomTreeTab(tk.Frame):
         self.load_button = tk.Button(self.button_frame, text="Load", command=self.load_tree)
         self.load_button.pack(side="right", padx=10)
 
+        self.undo_button = tk.Button(self.button_frame, text="Undo", command=self.undo)
+        self.undo_button.pack(side="right", padx=10)
+
         self.clear_all_button = tk.Button(self.button_frame, text="Clear All", command=self.clear_all)
         self.clear_all_button.pack(side="right", padx=10)
+
 
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Edit", command=self.edit_selected)
@@ -56,6 +60,7 @@ class HeirloomTreeTab(tk.Frame):
 
         self.tree.bind("<Button-3>", self.show_context_menu)
         
+        self.history = []
         self.update_total_shares()
 
     def show_context_menu(self, event):
@@ -68,8 +73,59 @@ class HeirloomTreeTab(tk.Frame):
             self.tree.selection_set(item)
             self.context_menu.post(event.x_root, event.y_root)
 
+    def get_tree_snapshot(self):
+        data = []
+        def traverse(item):
+            node = {
+                "id": item,
+                "parent": self.tree.parent(item),
+                "name": self.tree.item(item, "text"),
+                "share": str(self.shares.get(item, "0/1")),
+                "allocated_share": str(self.allocated_shares.get(item, "0/1"))
+            }
+            data.append(node)
+            for child in self.tree.get_children(item):
+                traverse(child)
+
+        for item in self.tree.get_children():
+             traverse(item)
+        return data
+
+    def save_state(self):
+        self.history.append(self.get_tree_snapshot())
+
+    def undo(self):
+        if not self.history:
+            messagebox.showinfo("Undo", "Nothing to undo.")
+            return
+        
+        previous_state = self.history.pop()
+        self.restore_tree_from_snapshot(previous_state)
+
+    def restore_tree_from_snapshot(self, data):
+        self.tree.delete(*self.tree.get_children())
+        self.shares.clear()
+        self.allocated_shares.clear()
+        
+        for node in data:
+            item_id = node["id"]
+            parent_id = node["parent"]
+            name = node["name"]
+            share = Fraction(node["share"])
+            allocated_share = Fraction(node["allocated_share"])
+
+            if parent_id == "":
+                 parent_id = ""
+
+            self.tree.insert(parent_id, "end", iid=item_id, text=name, values=(name, str(share)))
+            self.shares[item_id] = share
+            self.allocated_shares[item_id] = allocated_share
+
+        self.update_total_shares()
+
     def clear_all(self):
         if messagebox.askokcancel("Clear All", "Are you sure you want to clear the entire tree?"):
+            self.save_state()
             self.tree.delete(*self.tree.get_children())
             self.shares.clear()
             self.allocated_shares.clear()
@@ -137,29 +193,13 @@ class HeirloomTreeTab(tk.Frame):
         if not messagebox.askokcancel("Load Tree", "Loading a tree will clear the current one. Continue?"):
             return
 
+        self.save_state()
+
         try:
             with open(filename, 'r') as f:
                 data = json.load(f)
 
-            self.tree.delete(*self.tree.get_children())
-            self.shares.clear()
-            self.allocated_shares.clear()
-            
-            for node in data:
-                item_id = node["id"]
-                parent_id = node["parent"]
-                name = node["name"]
-                share = Fraction(node["share"])
-                allocated_share = Fraction(node["allocated_share"])
-
-                if parent_id == "":
-                     parent_id = ""
-
-                self.tree.insert(parent_id, "end", iid=item_id, text=name, values=(name, str(share)))
-                self.shares[item_id] = share
-                self.allocated_shares[item_id] = allocated_share
-
-            self.update_total_shares()
+            self.restore_tree_from_snapshot(data)
             messagebox.showinfo("Success", "Tree loaded successfully.")
 
             try:
@@ -179,6 +219,7 @@ class HeirloomTreeTab(tk.Frame):
         self.wait_window(dialog.top)
 
         if dialog.name and dialog.share_fraction is not None:
+            self.save_state()
             item_id = self.tree.insert("", "end", text=dialog.name, values=(dialog.name, str(dialog.share_fraction)))
             self.shares[item_id] = dialog.share_fraction
             self.allocated_shares[item_id] = dialog.share_fraction
@@ -206,6 +247,7 @@ class HeirloomTreeTab(tk.Frame):
         self.wait_window(dialog.top)
 
         if dialog.conveyances:
+            self.save_state()
             total_conveyed_share = sum(share for _, share in dialog.conveyances)
 
             self.shares[source_id] -= total_conveyed_share
@@ -233,6 +275,7 @@ class HeirloomTreeTab(tk.Frame):
         self.wait_window(dialog.top)
         
         if dialog.name and dialog.share_fraction:
+            self.save_state()
             parent_share = self.shares[selected_item]
             heir_share = parent_share * dialog.share_fraction
             
@@ -266,6 +309,7 @@ class HeirloomTreeTab(tk.Frame):
             self.wait_window(dialog.top)
 
             if dialog.name and dialog.share_fraction is not None:
+                self.save_state()
                 new_share = parent_share * dialog.share_fraction
                 self.tree.item(selected_item, text=dialog.name, values=(dialog.name, str(new_share)))
                 self.shares[selected_item] = new_share
@@ -286,6 +330,7 @@ class HeirloomTreeTab(tk.Frame):
             self.wait_window(dialog.top)
 
             if dialog.name and dialog.share_fraction is not None:
+                self.save_state()
                 new_share = dialog.share_fraction
                 self.tree.item(selected_item, text=dialog.name, values=(dialog.name, str(new_share)))
                 self.shares[selected_item] = new_share
@@ -328,6 +373,8 @@ class HeirloomTreeTab(tk.Frame):
 
         selected_item = selected_item[0]
         is_original_owner = not self.tree.parent(selected_item)
+
+        self.save_state()
 
         def delete_children(item):
             for child in self.tree.get_children(item):
