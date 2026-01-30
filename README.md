@@ -19,5 +19,5 @@ This application allows you to build an inheritance tree to track the division o
 2. Install git: https://git-scm.com/install/
 3. Open a terminal in your local user directory.
 4. Clone the repository: `git clone https://github.com/adoyle-cmu/ChainOfTitle.git`
-5. Navigate to the newly created ChainOfTitle directory in your file explorer, double click on 'main.py' to run the application.
-6. Optionally, create a shortcut to 'main.py' on your desktop for easier access in the future.
+5. Install dependencies: `pip install toga`
+6. Navigate to the ChainOfTitle directory and run: `python main.py`
