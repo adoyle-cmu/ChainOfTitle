@@ -1,0 +1,23 @@
+name: Build Windows Release
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # 3.14 is currently in alpha/dev; 3.12/3.13 is safer for enterprise
+      - name: Install Briefcase
+        run: pip install briefcase
+      - name: Package MSI
+        run: |
+          briefcase build windows --no-input
+          briefcase package windows --no-input
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: windows/*.msi
