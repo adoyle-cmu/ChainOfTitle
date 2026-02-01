@@ -40,7 +40,7 @@ jobs:
 
     - name: Build with Nuitka
       run: |
-        python -m nuitka --mode=standalone --assume-yes-for-downloads --windows-company-name="Aidan" --windows-product-name="ChainOfTitle" --windows-file-version="${{ steps.get_version.outputs.VERSION }}" --windows-icon-from-ico=main.ico --enable-plugin=tk-inter --remove-output --windows-console-mode=disable main.py
+        python -m nuitka --mode=standalone --assume-yes-for-downloads --windows-company-name="Aidan" --windows-product-name="Vest" --windows-file-version="${{ steps.get_version.outputs.VERSION }}" --windows-icon-from-ico=main.ico --enable-plugin=tk-inter --remove-output --windows-console-mode=disable main.py
 
     - name: Build Installer with Inno Setup
       run: |
@@ -49,6 +49,6 @@ jobs:
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: user_output/ChainOfTitle_Setup.exe
+        files: user_output/Vest_Setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

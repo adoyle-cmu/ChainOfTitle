@@ -18,6 +18,6 @@ This application allows you to build an inheritance tree to track the division o
 1. Install Python (Should be installed on mac, can be downloaded from the software center on windows)
 2. Install git: https://git-scm.com/install/
 3. Open a terminal in your local user directory.
-4. Clone the repository: `git clone https://github.com/adoyle-cmu/ChainOfTitle.git`
-5. Navigate to the newly created ChainOfTitle directory in your file explorer, double click on 'main.py' to run the application.
+4. Clone the repository: `git clone https://github.com/adoyle-cmu/Vest.git`
+5. Navigate to the newly created Vest directory in your file explorer, double click on 'main.py' to run the application.
 6. Optionally, create a shortcut to 'main.py' on your desktop for easier access in the future.
