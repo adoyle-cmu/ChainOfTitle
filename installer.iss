@@ -1,6 +1,8 @@
+#define AppVersion "1.0.0"
+
 [Setup]
 AppName=ChainOfTitle
-AppVersion=1.0.0
+AppVersion={#AppVersion}
 DefaultDirName={autopf}\ChainOfTitle
 DefaultGroupName=ChainOfTitle
 UninstallDisplayIcon={app}\main.exe
